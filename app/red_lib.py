@@ -102,11 +102,13 @@ def add_to_db(account_id, tag, im_red):
 def get_image_info_from_db(im_id):
     ses = session()
     im = ses.query(Image).get(im_id)
-    ses.close()
     if im:
-        return {'image_id': im.id, 'red': im.red, \
+        im_info = {'image_id': im.id, 'red': im.red, \
                 'account_id': im.account.id, 'tag': im.tag.tag}
+        ses.close()
+        return im_info
     else:
+        ses.close()
         return 0
 
 def get_count_from_db(account_id, tag, red_gt):
@@ -131,7 +133,6 @@ def get_account_info_from_db(account_id):
     ses = session()
     account_info = {}
     if ses.query(Account).get(account_id):
-        print(ses.query(Account).get(account_id).tags)
         tags = [value for value, in ses.query(Tag.tag).\
                    join('accounts').\
                    filter_by(id=account_id).all()]

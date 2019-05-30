@@ -6,14 +6,35 @@ Created on Wed May 15 18:43:35 2019
 @author: elenalee
 """
 import aiohttp
+#from app import loop
 from app.red_lib import get_red_percent, get_image_from_request
 from app.red_lib import add_to_db, del_from_db
 from app.red_lib import get_count_from_db, get_image_info_from_db
 from app.red_lib import get_accounts_from_db, get_account_info_from_db
+from config import RED_BOT_TOKEN, RED_CHAT_ID
+import json
 
 async def index(request):
     data = await request.json()
-    return aiohttp.web.Response(text='Hello {}!'.format(data.get('name','Aiohttp')))
+    return aiohttp.web.Response(
+            text='Hello {}!'.format(data.get('name','Aiohttp')))
+    
+async def push_message(messageContent, chat_id):
+    # Отправка сообщения telegram боту для чата REDvision (используем webhook)
+    headers = {'Content-Type': 'application/json'}
+    message = {"text": messageContent,
+               "chat_id": chat_id
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post('https://api.telegram.org/bot{}/sendMessage'.\
+                                format(RED_BOT_TOKEN),
+                                data=json.dumps(message),
+                                headers=headers) as responce:
+            try:
+                assert responce.status == 200
+            except:
+                return aiohttp.web.Response(status=500)
+    return aiohttp.web.Response(status=200)
 
 async def set_image_info(request):
     # Чтение параметров запроса
@@ -27,8 +48,13 @@ async def set_image_info(request):
     im_red = get_red_percent(np_image)
     # Запись в БД
     im_id = add_to_db(account_id, tag, im_red)
-    
-    return aiohttp.web.json_response({'image_id': im_id, 'red': im_red})
+    # Отправка сообщения telegram боту
+    im_info = {'image_id': im_id,
+               'red': im_red,
+               'account_id': account_id,
+               'tag': tag}
+    print(await push_message(im_info, RED_CHAT_ID))
+    return aiohttp.web.json_response(im_info)
 
 async def get_count(request):
     # Подсчет количества записей, удовлетворяющих запросу
@@ -85,3 +111,5 @@ def setup_routes(new_app):
     # Дополнительные маршруты
     new_app.router.add_get('/accounts', get_accounts_list)
     new_app.router.add_get('/accounts/{account:\d+}', get_account_info)
+    # Для отправки сообщений в telegram
+    new_app.router.add_get('/push_message', push_message)

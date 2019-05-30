@@ -104,8 +104,11 @@ venv.bak/
 .mypy_cache/
 
 # other
+config.py
 images/
 *copy.py
 client.py
 create_db.py
 red.db
+*.crt
+*.key
